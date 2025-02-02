@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rainfall Prediction Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #f1f1f1;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background: #ddd;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Rainfall Prediction System</h1>
+            <div class="controls">
+                <button id="retrain-btn" onclick="startRetraining()">
+                    🔄 Retrain Model
+                </button>
+                <div id="status-indicator">
+                    <span id="status-text"></span>
+                    <progress id="training-progress" value="0" max="100"></progress>
+                </div>
+            </div>
+        </header>
+
+        <div class="tab-container">
+            <div class="tab active" onclick="showTab('manual-data')">Manual Data</div>
+            <div class="tab" onclick="showTab('reanalysis-data')">Reanalysis Data</div>
+        </div>
+
+        <div class="tab-content active" id="manual-data">
+            <div class="visualization-section">
+                {% if data %}
+                    {% for period in ['period_1', 'period_2', 'period_3'] %}
+                    <div class="graph-card">
+                        <div id="{{ period }}-graph" class="graph"></div>
+                        <div class="metrics">
+                            <div class="metric-item">
+                                <span>RMSE:</span>
+                                <span>{{ metrics.period_metrics[period].rmse|round(2) }}</span>
+                            </div>
+                            <div class="metric-item">
+                                <span>MAE:</span>
+                                <span>{{ metrics.period_metrics[period].mae|round(2) }}</span>
+                            </div>
+                            <div class="metric-item">
+                                <span>MAPE:</span>
+                                <span>{{ metrics.period_metrics[period].mape|round(2) }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-data">No trained model available. Please retrain.</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- re-analysis data  -->
+        <div class="tab-content" id="reanalysis-data">
+            <div class="visualization-section">
+                {% if reanalysis_data %}
+                    {% for period in ['period_1', 'period_2', 'period_3'] %}
+                    <div class="graph-card">
+                        <div id="reanalysis-{{ period }}-graph" class="graph"></div>
+                        <div class="metrics">
+                            <div class="metric-item">
+                                <span>RMSE:</span>
+                                <span>{{ reanalysis_metrics.period_metrics[period].rmse|round(2) }}</span>
+                            </div>
+                            <div class="metric-item">
+                                <span>MAE:</span>
+                                <span>{{ reanalysis_metrics.period_metrics[period].mae|round(2) }}</span>
+                            </div>
+                            <div class="metric-item">
+                                <span>MAPE:</span>
+                                <span>{{ reanalysis_metrics.period_metrics[period].mape|round(2) }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-data">No reanalysis data available.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+        }
+    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+    {% if data %}
+    <script>
+        {% for period in ['period_1', 'period_2', 'period_3'] %}
+        Plotly.newPlot("{{ period }}-graph", {
+            data: [
+                {
+                    x: {{ data.graphs[period].actual.ds | tojson }},
+                    y: {{ data.graphs[period].actual.y | tojson }},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Actual',
+                    line: {color: '#1f77b4'}
+                },
+                {
+                    x: {{ data.graphs[period].predicted.ds | tojson }},
+                    y: {{ data.graphs[period].predicted.yhat1 | tojson }},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Predicted',
+                    line: {color: '#ff7f0e', dash: 'dot'}
+                }
+            ],
+            layout: {
+                title: "{{ period.replace('_', ' ').title() }} Predictions",
+                xaxis: {title: 'Date'},
+                yaxis: {title: 'Rainfall (mm)'}
+            }
+        });
+        {% endfor %}
+    </script>
+    {% endif %}
+</body>
+</html>
