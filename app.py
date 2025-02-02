@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify
+from flask_cors import CORS
 import pandas as pd
 import plotly.express as px
 import joblib
@@ -7,6 +8,7 @@ import time
 import threading
 
 app = Flask(__name__)
+CORS(app)
 training_lock = threading.Lock()
 training_status = {'running': False, 'progress': 0, 'message': ''}
 
